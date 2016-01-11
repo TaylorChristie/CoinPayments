@@ -46,6 +46,12 @@ class coinPayments
 		return $this->createForm($fields);
 	}
 
+	public function getIpnVars()
+	{
+		$vars = $_POST;
+		return $vars;
+	}
+
 
 
 	public function ValidatePayment($cost, $currency)
@@ -68,7 +74,7 @@ class coinPayments
 				if(empty($_POST['merchant']))
 				{
 
-					$this->paymentError[] = 'POST data does not contain a merchant ID.';
+					$this->paymentError[105] = 'POST data does not contain a merchant ID.';
 
 					return false;
 
@@ -82,7 +88,7 @@ class coinPayments
 
 			}
 
-			$this->paymentError[] = 'Request does not autheticate (wrong merchant ID + secret Key combo)';
+			$this->paymentError[503] = 'Request does not autheticate (wrong merchant ID + secret Key combo)';
 
 			return false;
 
@@ -109,12 +115,12 @@ class coinPayments
 				}
 			}
 
-			$this->paymentError[] = 'HMAC hashes do not match';
+			$this->paymentError[504] = 'HMAC hashes do not match';
 
 			return false;
 		}
 
-		$this->paymentError[] = 'Does not contain a HMAC request';
+		$this->paymentError[106] = 'Does not contain a HMAC request';
 
 		return false;
 	}

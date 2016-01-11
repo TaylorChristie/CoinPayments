@@ -4,7 +4,7 @@ A PHP implementation of CoinPayments API wrapped up into a simple to use class.
 
 
 #Introduction#
-This is a two file class with simplicity at its core. I wanted to create a simple to use IPN that works with both paypal and bitcoin, because they are the most requested payment systems. Before you continue reading this, you should head over to https://www.coinpayments.net/merchant-tools-ipn#setup and make sure your account is ready to use with thew IPN. You do not need to setup a IPN url on coinpayments, you can do it in the code. 
+This is a one file class with simplicity at its core. I wanted to create a simple to use IPN that works with both paypal and bitcoin, because they are the most requested payment systems. Before you continue reading this, you should head over to https://www.coinpayments.net/merchant-tools-ipn#setup and make sure your account is ready to use with thew IPN. You do not need to setup a IPN url on coinpayments, you can do it in the code. 
 
 #How to Use#
 
@@ -37,9 +37,15 @@ $passthruVar = 'asd234sdf';
 // The callback url that coinpayments will send a request to so you can validate the payment
 $callbackUrl = 'http://localhost/coinPaymentsCallback.php';
 
-$button = $cp->createPayment($productName, $currency, $price, $passthruVar, $callbackUrl);
+// You can modify the button very simply using the following code
+// The button just needs to create a submit action, it can be an input or button type
+// This will override the default button hard coded into the source (works with bootstrap out of the box)
+$cp->createButton('<button type="submit" class="custom">Make Payment</button>');
 
-echo $button;
+
+$form = $cp->createPayment($productName, $currency, $price, $passthruVar, $callbackUrl);
+
+echo $form;
 ```
 
 Next, You need to know how to complete the callback (or IPN).

@@ -1,16 +1,22 @@
 <?php
 namespace MineSQL;
 
-
-require dirname(__FILE__).'/CPHelper.class.php';
-
-class coinPayments extends CPHelper 
+class coinPayments 
 {
 
 	private $secretKey;
 	private $merchantId;
 	private $isHttpAuth;
+	private $button = '<button type="submit" class="btn btn-default">Purchase With CoinPayments</button>';
 	public $paymentErrors;
+	const ENDPOINT = 'https://www.coinpayments.net/index.php';
+
+
+	// Can change the style of your payment button
+	public function createButton($button)
+	{
+		$this->$button = $button;
+	}
 
 
 	public function setMerchantId($merchant)
@@ -24,7 +30,7 @@ class coinPayments extends CPHelper
 	}
 
 
-	function createPayment($productName, $currency, $price, $custom, $callbackUrl, $successUrl = '', $cancelUrl = '')
+	public function createPayment($productName, $currency, $price, $custom, $callbackUrl, $successUrl = '', $cancelUrl = '')
 	{
 		$fields = array(
 				  'merchant' => $this->merchantId,
@@ -37,13 +43,12 @@ class coinPayments extends CPHelper
 				  'custom'  => $custom
 				  );
 
-
 		return $this->createForm($fields);
 	}
 
 
 
-	function ValidatePayment($cost, $currency)
+	public function ValidatePayment($cost, $currency)
 	{
 		if(!isset($_POST['ipn_mode']))
 		{
@@ -135,30 +140,65 @@ class coinPayments extends CPHelper
 
 					if(intval($_POST['status']) == -2) {
 
-						$this->paymentError[] = 'The payment has been chargedback through paypal.';
+						$this->paymentError[100] = 'The payment has been chargedback through paypal.';
 
 						return false;
 
 					}
 
-					$this->paymentError[] = 'The payment most likely has not been completed yet.';
+					$this->paymentError[101] = 'The payment most likely has not been completed yet.';
 
 					return false;
 
 				}
 
-				$this->paymentError[] = 'The amount paid does not match the original payment.';
+				$this->paymentError[102] = 'The amount paid does not match the original payment.';
 
 			}
 
-			$this->paymentError[] = 'The currency requested and currency paid differ, suspected form tampering.';
+			$this->paymentError[103] = 'The currency requested and currency paid differ, suspected form tampering.';
 
 			return false;
 		}
 
-		$this->paymentError[] = 'Merchant ID does not match.';
+		$this->paymentError[104] = 'Merchant ID does not match.';
 
 		return false;
+	}
+
+	private function createProperties($fields)
+	{
+		$field['cmd']         = '_pay_simple';
+		$field['item_name']   = 'Payment';
+		$field['custom']	  = '';
+		$field['want_shipping'] = '0';
+
+
+		foreach($field as $key=>$item)
+		{
+			if(!array_key_exists($key, $fields))
+			{
+				$fields[$key] = $item;
+			}
+		}
+
+
+		return $fields;
+	}
+
+
+	private function createForm($fields)
+	{
+		$data = $this->createProperties($fields);
+
+		$text = '<form action="'.self::ENDPOINT.'" method="post">';
+
+		foreach($data as $name => $value) {
+			$text .= '<input type="hidden" name="'.$name.'" value="'.$value.'">';
+		}
+
+		return $text.$this->button.'</form>';
+
 	}
 
 

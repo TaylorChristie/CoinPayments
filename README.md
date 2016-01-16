@@ -107,7 +107,7 @@ Here is a table of the error numbers and what they mean.
 |  	|  	|
 |  	|  	|
 |  	|  	|
-|  	|  	|                                                                                                                                                                                                  |
+|  	|  	|                                                                                                                                                                                                |
 
 ##Misc.##
 You can modify the payment button very easily by editing the CPHelper.class.php file under the createButton method. In the future I might make it more dynamic, but for now it will need to be edited.

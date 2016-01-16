@@ -18,6 +18,12 @@ class coinPayments
 		$this->$button = $button;
 	}
 
+	//
+	public function isHttpAuth($setting = true)
+	{
+		$this->isHttpAuth = $setting;
+	}
+
 
 	public function setMerchantId($merchant)
 	{
@@ -58,7 +64,7 @@ class coinPayments
 	{
 		if(!isset($_POST['ipn_mode']))
 		{
-			$this->paymentError[] = 'ipn mode not set.';
+			$this->paymentError[400] = 'Missing Post Data From Callback';
 
 			return false;
 
@@ -74,7 +80,7 @@ class coinPayments
 				if(empty($_POST['merchant']))
 				{
 
-					$this->paymentError[105] = 'POST data does not contain a merchant ID.';
+					$this->paymentError[400] = 'Missing Post Data From Callback';
 
 					return false;
 
@@ -88,13 +94,20 @@ class coinPayments
 
 			}
 
-			$this->paymentError[503] = 'Request does not autheticate (wrong merchant ID + secret Key combo)';
+			$this->paymentError[401] = 'Unauthorized Request (HTTP)';
 
 			return false;
 
+		} elseif(!empty($_SERVER['HTTP_HMAC'])) {
+
+			return $this->validatePaymentHMAC();
+
+		} else {
+
+			$this->paymentError[403] = 'Could not validate security';
+			return false;
 		}
 
-		return $this->validatePaymentHMAC();
 
 	}
 
@@ -115,12 +128,12 @@ class coinPayments
 				}
 			}
 
-			$this->paymentError[504] = 'HMAC hashes do not match';
+			$this->paymentError[401] = 'Unauthorized Request (HMAC)';
 
 			return false;
 		}
 
-		$this->paymentError[106] = 'Does not contain a HMAC request';
+		$this->paymentError[402] = 'HMAC Request Header Not Found';
 
 		return false;
 	}
@@ -146,28 +159,28 @@ class coinPayments
 
 					if(intval($_POST['status']) == -2) {
 
-						$this->paymentError[100] = 'The payment has been chargedback through paypal.';
+						$this->paymentError[500] = 'Payment has been reversed';
 
 						return false;
 
 					}
 
-					$this->paymentError[101] = 'The payment most likely has not been completed yet.';
+					$this->paymentError[501] = 'Incomplete Payment';
 
 					return false;
 
 				}
 
-				$this->paymentError[102] = 'The amount paid does not match the original payment.';
+				$this->paymentError[502] = 'Mismatching payment amount';
 
 			}
 
-			$this->paymentError[103] = 'The currency requested and currency paid differ, suspected form tampering.';
+			$this->paymentError[503] = 'Mismatching currency type';
 
 			return false;
 		}
 
-		$this->paymentError[104] = 'Merchant ID does not match.';
+		$this->paymentError[504] = 'Mismatching Merchant ID';
 
 		return false;
 	}
@@ -178,6 +191,7 @@ class coinPayments
 		$field['item_name']   = 'Payment';
 		$field['custom']	  = '';
 		$field['want_shipping'] = '0';
+		$field['quantity']    = '1';
 
 
 		foreach($field as $key=>$item)
@@ -212,7 +226,7 @@ class coinPayments
 	{
 
 
-		return (empty($this->paymentErrors)) ? $this->paymentErrors : array('None');
+		return (empty($this->paymentErrors)) ? $this->paymentErrors : null;
 	}
 
 

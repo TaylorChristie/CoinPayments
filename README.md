@@ -69,7 +69,30 @@ In order for the payment to actually validate in the class, the request has to b
 
 Then it needs to validate that the actual currency and currency paid are the same, so that is why you need to log the payment into some sort of database so you can fetch it when verifying the payment.It also validates that the amount paid by the buyer clears, and that the status coinpayments sends is either 100 or 2 (https://www.coinpayments.net/merchant-tools-ipn#statuses). If all of these challenges are passed then the payment was successful. If there are errors in payment verification the errors are descriptive and not number based.
 
+##Error Catcher##
+This application has an error catching mechanism so you can easily differentiate errors. 
 
+to get all the errors of a callback simply call ::getErrors()
+
+```
+$cp->getErrors();
+```
+
+This function will either return a key-based array with the keys as the error code numbers and the value as the error code text or it will return a null value.
+
+
+Here is a table of the error numbers and what they mean.
+| Error Code # | Error Code Text                                                                                                                                                                                                                                                                                                                                                                                                     |
+|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 400          | [b]Missing POST data from callback[/b]   The callback response is incomplete. This means the request is most likely not from coinPayments.  $_POST Variables that use this Error marker:  - ipn_mode - merchant                                                                                                                                                                                                     |
+| 401          | [b]Unauthorized Request (HTTP/HMAC)[/b]  The callback security information does not match the information in your application. The error text tells you if the requested information was trying to access via either HTTP or HMAC.  $_SERVER variables that use this Error marker: - PHP_AUTH_USER - PHP_AUTH_PW - HTTP_HMAC                                                                                        |
+| 402          | [b]HMAC Request Header Not Found[/b]  The HMAC header could not be found even though HMAC was defined as the authorization method. This error may be caused if a request is being forged and only http is being used.  Dependant Variables that use this Error marker: - $_SERVER['HTTP_HMAC'] - coinPayments::isHttpAuth(true);                                                                                    |
+| 403          | [b]Could not validate security[/b]  The request did not send enough security information to be able to authenticate. This error is thrown if HMAC is not present in the request and HMAC is specifically chosen using coinPayments::isHttpAuth(false). This error marker is only present for ease of use for the developer implementing the script, as this should not throw an error in a production enviroment.   |
+| 500          | [b]Payment has been reversed[/b]  This error only applies to coinPayment accounts which have the PayPal passthru enabled and a user has charged back a payment.                                                                                                                                                                                                                                                     |
+| 501          | [b]Incomplete Payment[/b]  The payment has not yet been marked as complete on coinPayments. The payment could either be pending or cancelled.                                                                                                                                                                                                                                                                       |
+| 502          | [b]Mismatching payment amount[/b]  The payment sent less than the required amount of a specified currency than what is defined in the application.  This depends on the $cost variable that is passed into the coinPayments::ValidatePayment() function. Ensure that the information you are passing to the application is correct, if it is then form tampering occurred.                                          |
+| 503          | [b]Mismatching currency type[/b]  The currency type was changed in the transaction (form tampering). See error 502 for more information on how this error is triggered.                                                                                                                                                                                                                                             |
+| 504          | [b]Mismatching Merchant ID[/b]  This error should never be thrown, but it checks to ensure the POSTed merchant ID matches the application's merchant ID.                                                                                                                                                                                                                                                            |
 
 ##Misc.##
 You can modify the payment button very easily by editing the CPHelper.class.php file under the createButton method. In the future I might make it more dynamic, but for now it will need to be edited.

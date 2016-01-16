@@ -8,7 +8,7 @@ class coinPayments
 	private $merchantId;
 	private $isHttpAuth;
 	private $button = '<button type="submit" class="btn btn-default">Purchase With CoinPayments</button>';
-	public $paymentErrors;
+	public $paymentError;
 	const ENDPOINT = 'https://www.coinpayments.net/index.php';
 
 

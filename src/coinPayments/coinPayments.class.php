@@ -54,8 +54,7 @@ class coinPayments
 
 	public function getIpnVars()
 	{
-		$vars = $_POST;
-		return $vars;
+		return $_POST;
 	}
 
 
@@ -111,7 +110,7 @@ class coinPayments
 		} else {
 
 			$this->paymentError[403] = 'Could not validate security';
-			
+
 			return false;
 		}
 

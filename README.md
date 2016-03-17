@@ -51,14 +51,20 @@ echo $form;
 Next, You need to know how to complete the callback (or IPN).
 
 ```php
-... initalize the class and set your merchantID and SecretKey like above
+//... initalize the class and set your merchantID and SecretKey like above
+
+//You can access all the posted variables from this method.
+$vars = $cp->getIpnVars();
+$passthruVar = $vars['custom'];
+
+if($cp->validatePayment()){
+  // the payment was successful and has a 100 or 2 response code from coinpayments (confirmed)
+
+  // be sure to check the currency matches the currency you created your form with, and the price matches the cost of your product
+  $paid_amount = $vars['amount1'];
+  $currency    = $vars['currency1'];
 
 
-$passthruVar = $_POST['custom'];
-// Now you can get the payment information from storage to get the price of the product and the currency
-
-if($cp->validatePayment($price, $currency)){
-  // the payment was successful
 } else {  
   // The payment did not correctly validate, all errors are caught into an error array
   print_r($cp->getErrors());
@@ -67,7 +73,6 @@ if($cp->validatePayment($price, $currency)){
 
 In order for the payment to actually validate in the class, the request has to be verified through either HMAC or httpauth. Both work seemlessly in the application and is totally plug and play, the source does not need to be modified. 
 
-Then it needs to validate that the actual currency and currency paid are the same, so that is why you need to log the payment into some sort of database so you can fetch it when verifying the payment.It also validates that the amount paid by the buyer clears, and that the status coinpayments sends is either 100 or 2 (https://www.coinpayments.net/merchant-tools-ipn#statuses). If all of these challenges are passed then the payment was successful. If there are errors in payment verification the errors are descriptive and not number based.
 
 ##Error Catcher##
 This application has an error catching mechanism so you can easily differentiate errors. 

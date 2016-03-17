@@ -4,11 +4,11 @@ namespace MineSQL;
 class coinPayments 
 {
 
-	private $secretKey;
-	private $merchantId;
-	private $isHttpAuth;
+	private $secretKey, $merchantId, $isHttpAuth;
 	private $button = '<button type="submit" class="btn btn-default">Purchase With CoinPayments</button>';
+
 	public $paymentError;
+
 	const ENDPOINT = 'https://www.coinpayments.net/index.php';
 
 
@@ -60,7 +60,7 @@ class coinPayments
 
 
 
-	public function ValidatePayment($cost, $currency)
+	public function ValidatePayment()
 	{
 		if(!isset($_POST['ipn_mode']))
 		{
@@ -70,25 +70,23 @@ class coinPayments
 
 		}
 
+		if(empty($_POST['merchant']))
+		{
+
+			$this->paymentError[400] = 'Missing Post Data From Callback';
+
+			return false;
+			
+		}
+
+
 		if($this->isHttpAuth || $_POST['ipn_mode'] != 'hmac') {
 			
 			//Verify that the http authentication checks out with the users supplied information 
-			// 
 			if($_SERVER['PHP_AUTH_USER']==$this->merchantId && $_SERVER['PHP_AUTH_PW']==$this->secretKey)
-			{
-				// Failsafe to prevent malformed requests to throw an error
-				if(empty($_POST['merchant']))
-				{
-
-					$this->paymentError[400] = 'Missing Post Data From Callback';
-
-					return false;
-
-					
-				}
-
+			{				
 				if($this->checkFields()) {
-					echo 'IPN OK';
+
 					return true;
 				}
 
@@ -100,11 +98,20 @@ class coinPayments
 
 		} elseif(!empty($_SERVER['HTTP_HMAC'])) {
 
-			return $this->validatePaymentHMAC();
+			$hmac = hash_hmac("sha512", file_get_contents('php://input'), $this->secretKey);
+	
+			if($hmac == $_SERVER['HTTP_HMAC']) {
+	
+				if($this->checkFields()) {
+
+					return true;
+				}
+			}
 
 		} else {
 
 			$this->paymentError[403] = 'Could not validate security';
+			
 			return false;
 		}
 
@@ -112,78 +119,38 @@ class coinPayments
 	}
 
 
-	private function validatePaymentHMAC()
-	{
-		if(!empty($_SERVER['HTTP_HMAC'])) {
-
-			$hmac = hash_hmac("sha512", file_get_contents('php://input'), $this->secretKey);
-
-			if($hmac == $_SERVER['HTTP_HMAC']) {
-
-				if($this->checkFields()) {
-
-					echo 'IPN OK';
-					return true;
-
-				}
-			}
-
-			$this->paymentError[401] = 'Unauthorized Request (HMAC)';
-
-			return false;
-		}
-
-		$this->paymentError[402] = 'HMAC Request Header Not Found';
-
-		return false;
-	}
-
-
-	private function checkFields($currency, $cost)
+	private function checkFields()
 	{
 		// Ensure the paid out merchant is the same as the application
 		if($_POST['merchant'] == $this->merchantId) {
 
-			//ensure that the same currency was used (form tampering)
-			if(strtoupper($_POST['currency1']) == strtoupper($currency)) {
 
-				// ensure the price was paid
-				if(floatval($_POST['amount1']) >= floatval($cost)) {
+			// check and make sure coinpayments confirmed the payment
+			if(intval($_POST['status']) >= 100 || intval($_POST['status']) == 2) {
 
-					// check and make sure coinpayments confirmed the payment
-					if(intval($_POST['status']) >= 100 || intval($_POST['status']) == 2) {
-
-						return true;
-
-					}
-
-					if(intval($_POST['status']) == -2) {
-
-						$this->paymentError[500] = 'Payment has been reversed';
-
-						return false;
-
-					}
-
-					$this->paymentError[501] = 'Incomplete Payment';
-
-					return false;
-
-				}
-
-				$this->paymentError[502] = 'Mismatching payment amount';
+				return true;
 
 			}
 
-			$this->paymentError[503] = 'Mismatching currency type';
+			if(intval($_POST['status']) == -2) {
+
+				$this->paymentError[500] = 'Payment has been reversed';
+
+				return false;
+
+			}
+
+			$this->paymentError[501] = 'Incomplete Payment';
 
 			return false;
+
 		}
 
 		$this->paymentError[504] = 'Mismatching Merchant ID';
 
 		return false;
 	}
+
 
 	private function createProperties($fields)
 	{
@@ -224,8 +191,6 @@ class coinPayments
 
 	public function getErrors()
 	{
-
-
 		return (empty($this->paymentErrors)) ? $this->paymentErrors : null;
 	}
 

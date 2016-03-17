@@ -83,10 +83,42 @@ This function will either return a key-based array with the keys as the error co
 
 Here is a table of the error numbers and what they mean.
 | Error Code # 	| Error Code Text 	|
-|--------------	|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| 400 	| [b]Missing POST data from callback[/b]   The callback response is incomplete. This means the request is most likely not from coinPayments.  $_POST Variables that use this Error marker:  - ipn_mode - merchant 	|
-| 401 	| [b]Unauthorized Request (HTTP/HMAC)[/b]  The callback security information does not match the information in your application. The error text tells you if the requested information was trying to access via either HTTP or HMAC.  $_SERVER variables that use this Error marker: - PHP_AUTH_USER - PHP_AUTH_PW - HTTP_HMAC     	|
-| 402 	| [b]HMAC Request Header Not Found[/b]  The HMAC header could not be found even though HMAC was defined as the authorization method. This error may be caused if a request is being forged and only http is being used.  Dependant Variables that use this Error marker: - $_SERVER['HTTP_HMAC'] - coinPayments::isHttpAuth(true);  	|
+
+|     400 	    | [b]Missing POST data from callback[/b]   
+
+				   The callback response is incomplete. 
+				   This means the request is most likely not 
+				   from coinPayments.  
+
+				   $_POST Variables that use this Error marker:  
+				   - ipn_mode 
+				   - merchant 	
+-------------------------------------
+|     401 		| [b]Unauthorized Request (HTTP/HMAC)[/b]  
+
+				  The callback security information does not match 
+				  the information in your application. The error 
+				  text tells you if the requested information 
+				  was trying to access via either HTTP or HMAC.
+
+				  $_SERVER variables that use this Error marker: 
+				  - PHP_AUTH_USER 
+				  - PHP_AUTH_PW 
+				  - HTTP_HMAC  
+-------------------------------------				     	
+|     402 	    | [b]HMAC Request Header Not Found[/b]  
+
+				  The HMAC header could not be found even though
+				   HMAC was defined as the authorization method. 
+				   This error may be caused if a request is being 
+				   forged and only http is being used.  
+
+				   Dependant Variables that use this Error marker: 
+				   - $_SERVER['HTTP_HMAC'] 
+				   - coinPayments::isHttpAuth(true);  	
+-------------------------------------
+
+				   
 | 403 	| [b]Could not validate security[/b]  The request did not send enough security information to be able to authenticate. This error is thrown if HMAC is not present in the request and HMAC is specifically chosen using coinPayments::isHttpAuth(false). This error marker is only present for ease of use for the developer implementing the script, as this should not throw an error in a production enviroment.   	|
 | 500 	| [b]Payment has been reversed[/b]  This error only applies to coinPayment accounts which have the PayPal passthru enabled and a user has charged back a payment. 	|
 | 501 	| [b]Incomplete Payment[/b]  The payment has not yet been marked as complete on coinPayments. The payment could either be pending or cancelled.  	|
@@ -107,7 +139,7 @@ Here is a table of the error numbers and what they mean.
 |  	|  	|
 |  	|  	|
 |  	|  	|
-|  	|  	|                                                                                                                                                                                                |
+|  	|  	|                                                                                                                                                                                                  |
 
 ##Misc.##
 You can modify the payment button very easily by editing the CPHelper.class.php file under the createButton method. In the future I might make it more dynamic, but for now it will need to be edited.

@@ -31,6 +31,9 @@ class CoinPayments
 
 	public function createForm()
 	{
+	    //Automatically set merchant field
+	    $this->formFields['merchant'] = $this->merchantId;
+	    
 	    $formFields = $this->formFields;
 	    
 	    // This checks and ensures that the required fields (listed above in the class properties)

@@ -32,7 +32,9 @@ class CoinPayments
 	public function createForm()
 	{
 	    //Automatically set merchant field
-	    $this->formFields['merchant'] = $this->merchantId;
+	    $this->setFormElement('merchant', $this->merchantId);
+	    $this->setFormElement('cmd', '_pay');
+	    $this->setFormElement('reset', 1);
 	    
 	    $formFields = $this->formFields;
 	    

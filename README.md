@@ -1,5 +1,5 @@
 # CoinPayments
-A PHP implementation of CoinPayments API wrapped up into a simple to use class.
+A PHP implementation of CoinPayments Payment Gateway wrapped up into a simple to use class.
 
 
 
@@ -12,9 +12,9 @@ This class is very simple to use, you need to simply include the coinPayments.cl
 
 ```php
 
-require 'src/coinPayments/coinPayments.class.php';
+require 'src/MineSQL/CoinPayments.php';
 
-$cp = new \MineSQL\coinPayments();
+$cp = new \MineSQL\CoinPayments();
 
 $cp->setMerchantId('your_merchant_id_on_coinpayments');
 $cp->setSecretKey('your_secret_key_you_defined_in_account_settings_on_coinpayments');
@@ -25,131 +25,66 @@ Now the coinpayments class is ready to do one of two things, either create a pay
 
 ##Creating A New Payment##
 
+there are many optional settings that you should probably set as well: https://www.coinpayments.net/merchant-tools-buttons
+
 ```php
 ...
 
-$productName = "A Test Product";
-$currency    = "usd";
-$price       = 15.00;
-// This should be a unique identifier to differentiate payments in your database 
-// so you can use it in your IPN to verify that price and currency are the same (more on this later)
-$passthruVar = 'asd234sdf';
-// The callback url that coinpayments will send a request to so you can validate the payment
-$callbackUrl = 'http://localhost/coinPaymentsCallback.php';
-
-// You can modify the button very simply using the following code
-// The button just needs to create a submit action, it can be an input or button type
-// This will override the default button hard coded into the source (works with bootstrap out of the box)
-$cp->createButton('<button type="submit" class="custom">Make Payment</button>');
+// You are required to set the currency, amount and item name for coinpayments. cmd, reset, and merchant are automatically created within the class
 
 
-$form = $cp->createPayment($productName, $currency, $price, $passthruVar, $callbackUrl);
+//REQUIRED
+$CP->setFormElement('currency', 'USD');
+$CP->setFormElement('amountf', 12.50);
+$CP->setFormElement('item_name', 'Test Item');
+//OPTIONAL
+$CP->setFormElement('custom', 'customValue235');
+$CP->setFormElement('ipn_url', 'http://minesql.me/ipn/cp');
 
-echo $form;
+// After you have finished configuring all your form elements, 
+//you can call the CoinPayments::createForm method to invoke 
+// the creation of a usable html form.
+echo $CP->createForm();
 ```
 
 Next, You need to know how to complete the callback (or IPN).
 
 ```php
-//... initalize the class and set your merchantID and SecretKey like above
 
-//You can access all the posted variables from this method.
-$vars = $cp->getIpnVars();
-$passthruVar = $vars['custom'];
-
-if($cp->validatePayment()){
-  // the payment was successful and has a 100 or 2 response code from coinpayments (confirmed)
-
-  // be sure to check the currency matches the currency you created your form with, and the price matches the cost of your product
-  $paid_amount = $vars['amount1'];
-  $currency    = $vars['currency1'];
-
-
-} else {  
-  // The payment did not correctly validate, all errors are caught into an error array
-  print_r($cp->getErrors());
+// we pass the $_POST and $_SERVER variables to alleviate any actual dependencies in the class when testing/troubleshooting.
+// in the future, methods will be used within CoinPayments:: to grab the $_POST and $_SERVER variables in order to maintain easy of use
+// as well as sound pattern design
+try {
+if($CP->listen($_POST, $_SERVER)) 
+{
+	// The payment is successful and passed all security measures
+	// you can call the DB here if you want
+	
+} 
+else 
+{
+	// the payment is pending. an exception is thrown for all other payment errors.
+}
+}
+catch(Exception $e) 
+{
+	// catch the exception and decided what to do with it. (most likely log it)
 }
 ```
 
-In order for the payment to actually validate in the class, the request has to be verified through either HMAC or httpauth. Both work seemlessly in the application and is totally plug and play, the source does not need to be modified. 
+In order for the payment to actually validate in the class, the request has to be verified through either HMAC or httpauth. Both work seemlessly in the application and is totally plug and play, the source does not need to be modified. The method of verification can be changed in the CoinPayments merchant settings panel.
 
 
 ##Error Catcher##
 This application has an error catching mechanism so you can easily differentiate errors. 
 
-to get all the errors of a callback simply call ::getErrors()
+Any errors will invoke a new Exception to be called. I am still working on this feature to have named Exceptions for better usability, but for now they simply give detail error messages.
 
-```
-$cp->getErrors();
-```
-
-This function will either return a key-based array with the keys as the error code numbers and the value as the error code text or it will return a null value.
-
-
-Here is a table of the error numbers and what they mean.
-| Error Code # 	| Error Code Text 	|
-
-|     400 	    | [b]Missing POST data from callback[/b]   
-
-				   The callback response is incomplete. 
-				   This means the request is most likely not 
-				   from coinPayments.  
-
-				   $_POST Variables that use this Error marker:  
-				   - ipn_mode 
-				   - merchant 	
--------------------------------------
-|     401 		| [b]Unauthorized Request (HTTP/HMAC)[/b]  
-
-				  The callback security information does not match 
-				  the information in your application. The error 
-				  text tells you if the requested information 
-				  was trying to access via either HTTP or HMAC.
-
-				  $_SERVER variables that use this Error marker: 
-				  - PHP_AUTH_USER 
-				  - PHP_AUTH_PW 
-				  - HTTP_HMAC  
--------------------------------------				     	
-|     402 	    | [b]HMAC Request Header Not Found[/b]  
-
-				  The HMAC header could not be found even though
-				   HMAC was defined as the authorization method. 
-				   This error may be caused if a request is being 
-				   forged and only http is being used.  
-
-				   Dependant Variables that use this Error marker: 
-				   - $_SERVER['HTTP_HMAC'] 
-				   - coinPayments::isHttpAuth(true);  	
--------------------------------------
-
-				   
-| 403 	| [b]Could not validate security[/b]  The request did not send enough security information to be able to authenticate. This error is thrown if HMAC is not present in the request and HMAC is specifically chosen using coinPayments::isHttpAuth(false). This error marker is only present for ease of use for the developer implementing the script, as this should not throw an error in a production enviroment.   	|
-| 500 	| [b]Payment has been reversed[/b]  This error only applies to coinPayment accounts which have the PayPal passthru enabled and a user has charged back a payment. 	|
-| 501 	| [b]Incomplete Payment[/b]  The payment has not yet been marked as complete on coinPayments. The payment could either be pending or cancelled.  	|
-| 502 	| [b]Mismatching payment amount[/b]  The payment sent less than the required amount of a specified currency than what is defined in the application.  This depends on the $cost variable that is passed into the coinPayments::ValidatePayment() function. Ensure that the information you are passing to the application is correct, if it is then form tampering occurred. 	|
-| 503 	| [b]Mismatching currency type[/b]  The currency type was changed in the transaction (form tampering). See error 502 for more information on how this error is triggered. 	|
-| 504 	| [b]Mismatching Merchant ID[/b]  This error should never be thrown, but it checks to ensure the POSTed merchant ID matches the application's merchant ID. 	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|
-|  	|  	|                                                                                                                                                                                                  |
 
 ##Misc.##
-You can modify the payment button very easily by editing the CPHelper.class.php file under the createButton method. In the future I might make it more dynamic, but for now it will need to be edited.
+For now the button is not easy to modify, but it does have a class name 'coinpayments' so you can add whichever styles you want to it through this class. In the future I might make the button styling more dynamic.
 
 
 #Closing#
-This class is made to be extremely simple to use. If you find any issues with it or want to help develop it further send a pull request and I will most likely allow it. 
+I love help, if you think you can make this class better make a pull request! :)
 

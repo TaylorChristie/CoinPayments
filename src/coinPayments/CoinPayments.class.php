@@ -1,7 +1,7 @@
 <?php
 namespace MineSQL;
 
-class coinPayments 
+class CoinPayments extends IPayment
 {
 
 	private $secretKey, $merchantId, $isHttpAuth;
@@ -13,30 +13,30 @@ class coinPayments
 
 
 	// Can change the style of your payment button
-	public function createButton($button)
+	public function createButton(string $button)
 	{
 		$this->$button = $button;
 	}
 
 	//
-	public function isHttpAuth($setting = true)
+	public function isHttpAuth(bool $setting = true)
 	{
 		$this->isHttpAuth = $setting;
 	}
 
 
-	public function setMerchantId($merchant)
+	public function setMerchantId(string $merchant)
 	{
 		$this->merchantId = $merchant;
 	}
 
-	public function setSecretKey($secretKey)
+	public function setSecretKey(string $secretKey)
 	{
 		$this->secretKey = $secretKey;
 	}
 
 
-	public function createPayment($productName, $currency, $price, $custom, $callbackUrl, $successUrl = '', $cancelUrl = '')
+	public function createPayment(string $productName, string $currency, float $price, $custom, string $callbackUrl, string $successUrl = '', string $cancelUrl = '')
 	{
 		$fields = array(
 				  'merchant' => $this->merchantId,
@@ -59,7 +59,7 @@ class coinPayments
 
 
 
-	public function ValidatePayment()
+	public function validatePayment()
 	{
 		if(!isset($_POST['ipn_mode']))
 		{
@@ -117,7 +117,7 @@ class coinPayments
 
 	}
 
-
+	// The $_POST variables should be dependancy injected.
 	private function checkFields()
 	{
 		// Ensure the paid out merchant is the same as the application
@@ -151,7 +151,7 @@ class coinPayments
 	}
 
 
-	private function createProperties($fields)
+	private function createProperties(array $fields)
 	{
 		$field['cmd']         = '_pay_simple';
 		$field['item_name']   = 'Payment';
@@ -173,7 +173,7 @@ class coinPayments
 	}
 
 
-	private function createForm($fields)
+	private function createForm(array $fields)
 	{
 		$data = $this->createProperties($fields);
 
@@ -192,15 +192,5 @@ class coinPayments
 	{
 		return (empty($this->paymentErrors)) ? $this->paymentErrors : null;
 	}
-
-
-
-
-
-
-
-
-
-
 
 }

@@ -1,196 +1,148 @@
 <?php
 namespace MineSQL;
 
-class CoinPayments extends IPayment
+class CoinPayments
 {
 
-	private $secretKey, $merchantId, $isHttpAuth;
-	private $button = '<button type="submit" class="btn btn-default">Purchase With CoinPayments</button>';
-
-	public $paymentError;
+	private $secretKey, $merchantId, $formFields;
+	// for all available POST fields navigate to: https://www.coinpayments.net/merchant-tools-simple 
+	public $requiredFields = ['merchant', 'item_name', 'currency', 'amountf', 'cmd', 'reset'];
 
 	const ENDPOINT = 'https://www.coinpayments.net/index.php';
-
-
-	// Can change the style of your payment button
-	public function createButton(string $button)
+	
+	//Chainable setters
+	public function setMerchantId($id)
 	{
-		$this->$button = $button;
+		$this->merchantId = $id;
+		return $this;
+	}
+	
+	//Chainable setters
+	public function setSecretKey($secret)
+	{
+		$this->secretKey = $secret;
+		return $this;
 	}
 
-	//
-	public function isHttpAuth(bool $setting = true)
+	public function setFormElement($name, $value)
 	{
-		$this->isHttpAuth = $setting;
+		$this->formFields[$name] = $value;
 	}
 
-
-	public function setMerchantId(string $merchant)
+	public function createForm()
 	{
-		$this->merchantId = $merchant;
-	}
-
-	public function setSecretKey(string $secretKey)
-	{
-		$this->secretKey = $secretKey;
-	}
-
-
-	public function createPayment(string $productName, string $currency, float $price, $custom, string $callbackUrl, string $successUrl = '', string $cancelUrl = '')
-	{
-		$fields = array(
-				  'merchant' => $this->merchantId,
-				  'item_name' => $productName,
-				  'currency' => $currency,
-				  'amountf' => $price, 
-				  'ipn_url' => $callbackUrl,
-				  'success_url' => $successUrl,
-				  'cancel_url' => $cancelUrl,
-				  'custom'  => $custom
-				  );
-
-		return $this->createForm($fields);
-	}
-
-	public function getIpnVars()
-	{
-		return $_POST;
-	}
-
-
-
-	public function validatePayment()
-	{
-		if(!isset($_POST['ipn_mode']))
+	    $formFields = $this->formFields;
+	    
+	    // This checks and ensures that the required fields (listed above in the class properties)
+	    // is in the payment configuration with CoinPayments::setFormElement()
+		foreach($this->requiredFields as $field)
 		{
-			$this->paymentError[400] = 'Missing Post Data From Callback';
+		    // Checks if there is an entry into the given form fields
+			if(!array_key_exists($field, $formFields))
+			{
+				//there is not an entry for a required field. Throw an error.
+				throw new Exception($field.' value is required for form creation.');
+			}
+		}
+		
+		// Start the creation of a new form
+	    $form = '<form action="'.self::ENDPOINT.'" method="post">';
+        
+        //Cycle through all the fields given and create hidden post fields.
+		foreach($formFields as $name => $value) {
+			$form .= '<input type="hidden" name="'.$name.'" value="'.$value.'">';
+		}
+		
+		//create a generic button to forward the user to the coinpayments gateway
+		$form .= '<button type="submit" name="coinPaymentsBtn">Pay With CoinPayments</button></form>';
 
+		return $form;
+	
+	}
+
+    //dependancy injection for $_POST & $_SERVER
+    //$this->createError function.
+	public function listen(array $post, array $server)
+	{
+	    $merchantId = $this->merchantId;
+	    $secretKey = $this->secretKey;
+	    
+		if(!isset($post['ipn_mode'] || !isset($post['merchant'])))
+		{
+			$this->callbackError(400, 'Missing POST data from callback.');
 			return false;
 
 		}
 
-		if(empty($_POST['merchant']))
+
+		if($post['ipn_mode'] == 'httpauth') 
 		{
-
-			$this->paymentError[400] = 'Missing Post Data From Callback';
-
-			return false;
-			
-		}
-
-
-		if($this->isHttpAuth || $_POST['ipn_mode'] != 'hmac') {
 			
 			//Verify that the http authentication checks out with the users supplied information 
-			if($_SERVER['PHP_AUTH_USER']==$this->merchantId && $_SERVER['PHP_AUTH_PW']==$this->secretKey)
+			if($server['PHP_AUTH_USER']!=$merchantId || $server['PHP_AUTH_PW']!=$secretKey)
 			{				
-				if($this->checkFields()) {
-
-					return true;
-				}
-
+		        $this->callbackError(401, 'Unauthorized HTTP Request.');
+		        
+		        return false;
 			}
 
-			$this->paymentError[401] = 'Unauthorized Request (HTTP)';
-
-			return false;
-
-		} elseif(!empty($_SERVER['HTTP_HMAC'])) {
-
-			$hmac = hash_hmac("sha512", file_get_contents('php://input'), $this->secretKey);
+		}
+		elseif($post['ipn_mode'] == 'hmac') 
+		{
+    
+            // Create the HMAC hash to compare to the recieved one, using the secret key.
+			$hmac = hash_hmac("sha512", file_get_contents('php://input'), $secretKey);
+	        
+			if($hmac != $server['HTTP_HMAC']) {
 	
-			if($hmac == $_SERVER['HTTP_HMAC']) {
-	
-				if($this->checkFields()) {
-
-					return true;
-				}
+				 $this->callbackError(401, 'Unauthorized HMAC Request.');
+		        
+		        return false;
 			}
 
 		} else {
 
-			$this->paymentError[403] = 'Could not validate security';
-
-			return false;
+			$this->callbackError(402, 'Unknown or Malformed Request.');
+		        
+		    return false;
 		}
-
+		
+		// Passed initial security test - now check the status
+        $status = intval($post['status']);
+        $statusText = $post['status_text'];
+        
+        
+        if($post['merchant']!=$merchantId)
+        {
+            $this->callbackError(403, 'Mismatching merchant ID.')
+            
+            return false;
+        }
+        
+        
+        if($status < 0 )
+        {
+            // There has been an error with the payment - throw an error
+            $this->callbackError($status, $statusText);
+            return false;
+        }
+        elseif($status == 0)
+        {
+            // the payment is pending
+            return false;
+        }
+        elseif($status>=100 || $status == 2)
+        {
+            // the payment has been successful
+            return true;
+        }
 
 	}
-
-	// The $_POST variables should be dependancy injected.
-	private function checkFields()
+	
+	private function callbackError(int $errorCode, string $errorMessage)
 	{
-		// Ensure the paid out merchant is the same as the application
-		if($_POST['merchant'] == $this->merchantId) {
-
-
-			// check and make sure coinpayments confirmed the payment
-			if(intval($_POST['status']) >= 100 || intval($_POST['status']) == 2) {
-
-				return true;
-
-			}
-
-			if(intval($_POST['status']) == -2) {
-
-				$this->paymentError[500] = 'Payment has been reversed';
-
-				return false;
-
-			}
-
-			$this->paymentError[501] = 'Incomplete Payment';
-
-			return false;
-
-		}
-
-		$this->paymentError[504] = 'Mismatching Merchant ID';
-
-		return false;
+	    throw new Exception('#'.$errorCode.'There was a problem establishing integrity with the request: '.$errorMessage);
 	}
 
-
-	private function createProperties(array $fields)
-	{
-		$field['cmd']         = '_pay_simple';
-		$field['item_name']   = 'Payment';
-		$field['custom']	  = '';
-		$field['want_shipping'] = '0';
-		$field['quantity']    = '1';
-
-
-		foreach($field as $key=>$item)
-		{
-			if(!array_key_exists($key, $fields))
-			{
-				$fields[$key] = $item;
-			}
-		}
-
-
-		return $fields;
-	}
-
-
-	private function createForm(array $fields)
-	{
-		$data = $this->createProperties($fields);
-
-		$text = '<form action="'.self::ENDPOINT.'" method="post">';
-
-		foreach($data as $name => $value) {
-			$text .= '<input type="hidden" name="'.$name.'" value="'.$value.'">';
-		}
-
-		return $text.$this->button.'</form>';
-
-	}
-
-
-	public function getErrors()
-	{
-		return (empty($this->paymentErrors)) ? $this->paymentErrors : null;
-	}
 
 }

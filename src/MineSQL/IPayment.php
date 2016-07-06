@@ -1,0 +1,9 @@
+<?php
+
+abstract class IPayment
+{
+
+
+
+
+}

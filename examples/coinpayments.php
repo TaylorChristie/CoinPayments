@@ -1,26 +1,27 @@
 <?php 
 
-require '../src/coinPayments/coinPayments.class.php';
-
-
-
-// test httpauth and hmac then publish to github bb
-
-
-
-// You need to set a callback URL if you want the IPN to work
-$callbackUrl = '';
+require '../src/MineSQL/CoinPayments.php';
 
 // Create an instance of the class
-$CP = new \MineSQL\coinPayments();
+$CP = new \MineSQL\CoinPayments();
 
 // Set the merchant ID and secret key (can be found in account settings on CoinPayments.net)
-$CP->setMerchantId('');
-$CP->setSecretKey('');
+$CP->setMerchantId('asdasd');
+$CP->setSecretKey('asdasd');
 
-// Create a payment button with item name, currency, cost, custom variable, and the callback URL
-$form = $CP->createPayment('Test Product', 'btc', 0.00005, '123', $callbackUrl);
+// You are required to set the currency, amount and item name for coinpayments. cmd, reset, and merchant are automatically created within the class
+// there are many optional settings that you should probably set as well: https://www.coinpayments.net/merchant-tools-buttons
 
-// Display the button 
-echo $form;
+//REQUIRED
+$CP->setFormElement('currency', 'USD');
+$CP->setFormElement('amountf', 12.50);
+$CP->setFormElement('item_name', 'Test Item');
+//OPTIONAL
+$CP->setFormElement('custom', 'customValue235');
+$CP->setFormElement('ipn_url', 'http://minesql.me/ipn/cp');
+
+// After you have finished configuring all your form elements, 
+//you can call the CoinPayments::createForm method to invoke 
+// the creation of a usable html form.
+echo $CP->createForm();
 

@@ -50,7 +50,7 @@ class CoinPayments
 			}
 		}
 		
-		// Start the creation of a new form
+	    // Start the creation of a new form
 	    $form = '<form action="'.self::ENDPOINT.'" method="post">';
         
         //Cycle through all the fields given and create hidden post fields.
@@ -59,14 +59,13 @@ class CoinPayments
 		}
 		
 		//create a generic button to forward the user to the coinpayments gateway
-		$form .= '<button type="submit" name="coinPaymentsBtn">Pay With CoinPayments</button></form>';
+		$form .= '<button type="submit" name="coinPaymentsBtn" class="CoinPayments">Pay With CoinPayments</button></form>';
 
 		return $form;
 	
 	}
 
     //dependancy injection for $_POST & $_SERVER
-    //$this->createError function.
 	public function listen(array $post, array $server)
 	{
 	    $merchantId = $this->merchantId;
@@ -82,7 +81,6 @@ class CoinPayments
 
 		if($post['ipn_mode'] == 'httpauth') 
 		{
-			
 			//Verify that the http authentication checks out with the users supplied information 
 			if($server['PHP_AUTH_USER']!=$merchantId || $server['PHP_AUTH_PW']!=$secretKey)
 			{				
@@ -94,7 +92,6 @@ class CoinPayments
 		}
 		elseif($post['ipn_mode'] == 'hmac') 
 		{
-    
             // Create the HMAC hash to compare to the recieved one, using the secret key.
 			$hmac = hash_hmac("sha512", file_get_contents('php://input'), $secretKey);
 	        
@@ -105,7 +102,9 @@ class CoinPayments
 		        return false;
 			}
 
-		} else {
+		} 
+		else 
+		{
 
 			$this->callbackError(402, 'Unknown or Malformed Request.');
 		        
@@ -116,14 +115,12 @@ class CoinPayments
         $status = intval($post['status']);
         $statusText = $post['status_text'];
         
-        
         if($post['merchant']!=$merchantId)
         {
             $this->callbackError(403, 'Mismatching merchant ID.')
             
             return false;
         }
-        
         
         if($status < 0 )
         {
@@ -146,7 +143,7 @@ class CoinPayments
 	
 	private function callbackError(int $errorCode, string $errorMessage)
 	{
-	    throw new Exception('#'.$errorCode.'There was a problem establishing integrity with the request: '.$errorMessage);
+	    throw new Exception('#'.$errorCode.' There was a problem establishing integrity with the request: '.$errorMessage);
 	}
 
 

@@ -71,7 +71,7 @@ class CoinPayments
 	    $merchantId = $this->merchantId;
 	    $secretKey = $this->secretKey;
 	    
-		if(!isset($post['ipn_mode'] || !isset($post['merchant'])))
+		if(!isset($post['ipn_mode']) || !isset($post['merchant']))
 		{
 			$this->callbackError(400, 'Missing POST data from callback.');
 			return false;
@@ -117,7 +117,7 @@ class CoinPayments
         
         if($post['merchant']!=$merchantId)
         {
-            $this->callbackError(403, 'Mismatching merchant ID.')
+            $this->callbackError(403, 'Mismatching merchant ID.');
             
             return false;
         }

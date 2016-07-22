@@ -1,6 +1,6 @@
 <?php 
 
-require '../src/coinPayments/coinPayments.class.php';
+require '../src/MineSQL/CoinPayments.php';
 
 
 $CP = new \MineSQL\coinPayments();
@@ -11,20 +11,25 @@ $CP->setMerchantId('');
 // Set your secret IPN Key (in Account Settings on Coinpayments)
 $CP->setSecretKey('');
 
-// Payment Validator. Usually you would call this  
-// from a database to fetch the billing information based on the $_POST['custom'] variable
-// 
-if($CP->validatePayment(0.00005, 'btc')) {
+// you can use $_POST['custom'] or any other field names using the $_POST construct: https://www.coinpayments.net/merchant-tools-ipn#fields
 
+
+// we pass the $_POST and $_SERVER variables to alleviate any actual dependencies in the class when testing/troubleshooting.
+// in the future, methods will be used within CoinPayments:: to grab the $_POST and $_SERVER variables in order to maintain easy of use
+// as well as sound pattern design
+try {
+if($CP->listen($_POST, $_SERVER)) 
+{
 	// The payment is successful and passed all security measures
+	// you can call the DB here if you want
 	
+} 
+else 
+{
+	// the payment is pending. an exception is thrown for all other payment errors.
 }
-
-
-// The payment for some reason did not successfully complete
-// All the errors generated are gathered into an array and can be accessed by $CP->getErrors();
-
-$file = fopen("ipn_log.txt", 'w');
-fwrite($file, print_r($CP->getErrors()));
-fclose($file);
-
+}
+catch(Exception $e) 
+{
+	// catch the exception and decided what to do with it. (most likely log it)
+}
